@@ -1,9 +1,9 @@
 #include <stdlib.h>
-#include "mex.h"
 #define DEFAULT_ALLOCATED_LENGTH 16
 #define REALLOC_FACTOR 2
 
-static int offset10[10][3][4] = {{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
+static int offset10[10][3][4] = {
+								{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
 								{ {1,0,0,0},{0,1,0,1},{0,0,1,2} },
 								{ {0,0,0,1},{0,0,0,0},{0,0,0,0} },
 								{ {0,0,0,2},{0,0,0,2},{0,0,0,1} },
@@ -14,71 +14,72 @@ static int offset10[10][3][4] = {{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
 								{ {-1,1,0,1},{1,-1,0,0},{0,1,-1,1} },
 								{ {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} }};
 
-static int offset12[12][3][4] = {{ {0,0,0,1},{0,0,0,0},{0,0,0,0} },
-								 { {0,0,0,2},{0,0,0,2},{0,0,0,1} },
-								 { {0,1,0,1},{1,0,0,0},{0,1,0,1} },
-								 { {0,0,1,2},{0,0,1,2},{1,0,0,0} },
-								 { {-1,0,0,1},{0,-1,0,0},{0,0,-1,0} },
-								 { {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
-								 { {-1,1,0,1},{1,-1,0,0},{0,1,-1,1} },
-								 { {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
-								 { {0,1,0,0},{1,0,0,1},{1,0,0,2} },
-								 { {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
-								 { {0,0,1,0},{0,0,1,1},{0,1,0,2} },
-								 { {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} }};
+static int offset12[12][3][4] = {
+								{ {0,0,0,1},{0,0,0,0},{0,0,0,0} },
+								{ {0,0,0,2},{0,0,0,2},{0,0,0,1} },
+								{ {0,1,0,1},{1,0,0,0},{0,1,0,1} },
+								{ {0,0,1,2},{0,0,1,2},{1,0,0,0} },
+								{ {-1,0,0,1},{0,-1,0,0},{0,0,-1,0} },
+								{ {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
+								{ {-1,1,0,1},{1,-1,0,0},{0,1,-1,1} },
+								{ {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
+								{ {0,1,0,0},{1,0,0,1},{1,0,0,2} },
+								{ {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
+								{ {0,0,1,0},{0,0,1,1},{0,1,0,2} },
+								{ {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} }};
 
-static int offset10e[14][3][4] = {{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
-								  { {1,0,0,0},{0,1,0,1},{0,0,1,2} },
-								  { {0,0,0,1},{0,0,0,0},{0,0,0,0} },
-								  { {0,0,0,2},{0,0,0,2},{0,0,0,1} },
-								  { {0,1,0,1},{1,0,0,0},{0,1,0,1} },
-								  { {0,0,1,2},{0,0,1,2},{1,0,0,0} },
-								  { {-1,0,0,1},{0,-1,0,0},{0,0,-1,0} },
-								  { {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
-								  { {-1,1,0,1},{1,-1,0,0},{0,1,-1,1} },
-								  { {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
-								  { {0,1,0,0},{1,0,0,1},{1,0,0,2} },
-								  { {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
-								  { {0,0,1,0},{0,0,1,1},{0,1,0,2} },
-								  { {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} }};
+static int offset10e[14][3][4] = {
+								{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
+								{ {1,0,0,0},{0,1,0,1},{0,0,1,2} },
+								{ {0,0,0,1},{0,0,0,0},{0,0,0,0} },
+								{ {0,0,0,2},{0,0,0,2},{0,0,0,1} },
+								{ {0,1,0,1},{1,0,0,0},{0,1,0,1} },
+								{ {0,0,1,2},{0,0,1,2},{1,0,0,0} },
+								{ {-1,0,0,1},{0,-1,0,0},{0,0,-1,0} },
+								{ {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
+								{ {-1,1,0,1},{1,-1,0,0},{0,1,-1,1} },
+								{ {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
+								{ {0,1,0,0},{1,0,0,1},{1,0,0,2} },
+								{ {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
+								{ {0,0,1,0},{0,0,1,1},{0,1,0,2} },
+								{ {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} }};
 
-/* Important distinction, this is not actually the 12e neighborhood but rather the 12e union 10e neighborhood */
-static int offset12e[34][3][4] = {{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
-								  { {1,0,0,0},{0,1,0,1},{0,0,1,2} },
-								  { {0,0,0,1},{0,0,0,0},{0,0,0,0} },
-								  { {-1,0,0,1},{0,0,0,2},{0,0,0,1} },
-								  { {0,1,0,1},{1,0,0,0},{0,1,0,1} },
-								  { {-1,1,0,1},{0,0,1,2},{1,0,0,0} },
-								  { {0,0,0,2},{0,-1,0,0},{0,0,-1,0} },
-								  { {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
-								  { {0,0,1,2},{1,-1,0,0},{0,1,-1,1} },
-								  { {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
-								  { {0,1,0,0},{1,0,0,1},{1,0,0,2} },
-								  { {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
-								  { {0,0,1,0},{0,0,1,1},{0,1,0,2} },
-								  { {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} },
-								  { {0,1,1,0},{1,0,1,1},{1,1,0,2} },
-								  { {0,1,-1,0},{1,0,-1,1},{1,-1,0,2} },
-								  { {0,-1,1,0},{-1,0,1,1},{-1,1,0,2} },
-								  { {0,-1,-1,0},{-1,0,-1,1},{-1,-1,0,2} },
-								  { {0,0,1,1},{0,0,-1,0},{0,-1,0,0} },
-								  { {0,0,-1,1},{0,0,1,0},{0,1,0,0} },
-								  { {0,1,1,1},{1,0,-1,0},{1,-1,0,0} },
-								  { {0,1,-1,1},{1,0,1,0},{1,1,0,0} },
-								  { {-1,0,1,1},{0,-1,-1,0},{0,-1,-1,0} },
-								  { {-1,0,-1,1},{0,-1,1,0},{0,1,-1,0} },
-								  { {-1,1,1,1},{1,-1,-1,0},{1,-1,-1,0} },
-								  { {-1,1,-1,1},{1,-1,1,0},{1,1,-1,0} },
-								  { {0,-1,0,2},{-1,0,0,2},{-1,0,0,1} },
-								  { {0,1,0,2},{1,0,0,2},{1,0,0,1} },
-								  { {0,-1,1,2},{-1,0,1,2},{-1,0,-1,1} },
-								  { {0,1,1,2},{1,0,1,2},{1,0,-1,1} },
-								  { {-1,-1,0,2},{-1,-1,0,2},{-1,1,0,1} },
-								  { {-1,1,0,2},{1,-1,0,2},{1,1,0,1} },
-								  { {-1,-1,1,2},{-1,-1,1,2},{-1,1,-1,1} },
-								  { {-1,1,1,2},{1,-1,1,2},{1,1,-1,1} }};
-
-/* 10 neighborhood */
+/* This is not actually the 12e neighborhood but rather the 12e union 10e neighborhood */
+static int offset12e[34][3][4] = {
+								{ {-1,0,0,0},{0,-1,0,1},{0,0,-1,2} },
+								{ {1,0,0,0},{0,1,0,1},{0,0,1,2} },
+								{ {0,0,0,1},{0,0,0,0},{0,0,0,0} },
+								{ {-1,0,0,1},{0,0,0,2},{0,0,0,1} },
+								{ {0,1,0,1},{1,0,0,0},{0,1,0,1} },
+								{ {-1,1,0,1},{0,0,1,2},{1,0,0,0} },
+								{ {0,0,0,2},{0,-1,0,0},{0,0,-1,0} },
+								{ {-1,0,0,2},{0,-1,0,2},{0,0,-1,1} },
+								{ {0,0,1,2},{1,-1,0,0},{0,1,-1,1} },
+								{ {-1,0,1,2},{0,-1,1,2},{1,0,-1,0} },
+								{ {0,1,0,0},{1,0,0,1},{1,0,0,2} },
+								{ {0,-1,0,0},{-1,0,0,1},{-1,0,0,2} },
+								{ {0,0,1,0},{0,0,1,1},{0,1,0,2} },
+								{ {0,0,-1,0},{0,0,-1,1},{0,-1,0,2} },
+								{ {0,1,1,0},{1,0,1,1},{1,1,0,2} },
+								{ {0,1,-1,0},{1,0,-1,1},{1,-1,0,2} },
+								{ {0,-1,1,0},{-1,0,1,1},{-1,1,0,2} },
+								{ {0,-1,-1,0},{-1,0,-1,1},{-1,-1,0,2} },
+								{ {0,0,1,1},{0,0,-1,0},{0,-1,0,0} },
+								{ {0,0,-1,1},{0,0,1,0},{0,1,0,0} },
+								{ {0,1,1,1},{1,0,-1,0},{1,-1,0,0} },
+								{ {0,1,-1,1},{1,0,1,0},{1,1,0,0} },
+								{ {-1,0,1,1},{0,-1,-1,0},{0,-1,-1,0} },
+								{ {-1,0,-1,1},{0,-1,1,0},{0,1,-1,0} },
+								{ {-1,1,1,1},{1,-1,-1,0},{1,-1,-1,0} },
+								{ {-1,1,-1,1},{1,-1,1,0},{1,1,-1,0} },
+								{ {0,-1,0,2},{-1,0,0,2},{-1,0,0,1} },
+								{ {0,1,0,2},{1,0,0,2},{1,0,0,1} },
+								{ {0,-1,1,2},{-1,0,1,2},{-1,0,-1,1} },
+								{ {0,1,1,2},{1,0,1,2},{1,0,-1,1} },
+								{ {-1,-1,0,2},{-1,-1,0,2},{-1,1,0,1} },
+								{ {-1,1,0,2},{1,-1,0,2},{1,1,0,1} },
+								{ {-1,-1,1,2},{-1,-1,1,2},{-1,1,-1,1} },
+								{ {-1,1,1,2},{1,-1,1,2},{1,1,-1,1} }};
 
 static bool mask10[3][81]=
 	{
@@ -118,8 +119,6 @@ static bool mask10[3][81]=
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 1, 0, 0, 0, 0}
 	};
-
-/* extended 10 neighborhood */
 
 static bool mask10e[3][81]=
 	{
@@ -162,8 +161,6 @@ static bool mask10e[3][81]=
 	0, 0, 0, 0, 1, 0, 0, 0, 0}
 	};
 
-/* 12 neighborhood */
-
 static bool mask12[3][81]=
 	{
 	{0, 0, 0, 0, 1, 0, 0, 0, 0,
@@ -204,8 +201,6 @@ static bool mask12[3][81]=
 	0, 1, 0, 1, 0, 1, 0, 1, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0}
 	};
-
-/* extended 12 neighborhood */
 
 static bool mask12e[3][81]=
 	{
@@ -249,37 +244,36 @@ static bool mask12e[3][81]=
 
 typedef struct ufType 
 {
-    int *id;
-    int *sz;
-    int allocated_length;
-    int num_nodes;
-    int num_sets;
-    int finalized;
+	int *id;
+	int *sz;
+	int allocated_length;
+	int num_nodes;
+	int num_sets;
+	int finalized;
 }
 ufType;
 
 ufType *uf_init(int hint)
 {
-    ufType *uf = NULL;
+	ufType *uf = NULL;
 
-    if (hint == 0)
-        hint = DEFAULT_ALLOCATED_LENGTH;
+	if (hint == 0)
+		hint = DEFAULT_ALLOCATED_LENGTH;
 	
-    uf = (ufType *) calloc(1, sizeof(*uf));
-    uf->id = (int *) calloc(hint, sizeof(*(uf->id)));
-    uf->sz = (int *) calloc(hint, sizeof(*(uf->sz)));
-    uf->allocated_length = hint;
-    uf->num_nodes = 0;
-    uf->num_sets = 0;
-    uf->finalized = false;
+	uf = (ufType *) calloc(1, sizeof(*uf));
+	uf->id = (int *) calloc(hint, sizeof(*(uf->id)));
+	uf->sz = (int *) calloc(hint, sizeof(*(uf->sz)));
+	uf->allocated_length = hint;
+	uf->num_nodes = 0;
+	uf->num_sets = 0;
+	uf->finalized = false;
 
-    return uf;
+	return uf;
 }
 
 void uf_new_node(ufType *uf)
 {
-	int init_idx;
-	int i;
+	int init_idx, i;
 	if (uf->num_nodes >= uf->allocated_length)
 	{
 		init_idx = uf->allocated_length;
@@ -309,22 +303,21 @@ int uf_find(ufType *uf, int p)
 
 void uf_union(ufType *uf, int p, int q)
 {
-    if (uf->sz[p] < uf->sz[q])
-    {
-        uf->id[p] = q;
-        uf->sz[q] += uf->sz[p];
-    }
-    else
-    {
-        uf->id[q] = p;
-        uf->sz[p] += uf->sz[q];
-    }
+	if (uf->sz[p] < uf->sz[q])
+	{
+		uf->id[p] = q;
+		uf->sz[q] += uf->sz[p];
+	}
+	else
+	{
+		uf->id[q] = p;
+		uf->sz[p] += uf->sz[q];
+	}
 }
 
 void uf_new_pair(ufType *uf, int p, int q)
 {
-	int i;
-	int j;
+	int i, j;
 	
 	i = uf_find(uf, p);
 	j = uf_find(uf, q);
@@ -334,26 +327,26 @@ void uf_new_pair(ufType *uf, int p, int q)
 
 int uf_renumber(ufType *uf, int first)
 {
-    int k;
-    int counter = first;
+	int k;
+	int counter = first;
 
-    uf->finalized = true;
+	uf->finalized = true;
 
-    for (k = 0; k < uf->num_nodes; k++)
-        if (uf->id[k] == k)
-            uf->sz[k] = counter++;
+	for (k = 0; k < uf->num_nodes; k++)
+		if (uf->id[k] == k)
+			uf->sz[k] = counter++;
 	
-    uf->num_sets = counter - first;
-
-    return uf->num_sets;
+	uf->num_sets = counter - first;
+	
+	return uf->num_sets;
 }
 
 int uf_query_set(ufType *uf, int p)
 {
-    int k;
+	int k;
 
-    k = uf_find(uf, p);
-    return uf->sz[k];
+	k = uf_find(uf, p);
+	return uf->sz[k];
 }
 
 void uf_destroy(ufType *uf)
@@ -364,50 +357,35 @@ void uf_destroy(ufType *uf)
 
 bool nbor(int *p, int q, int *size, int fg_conn, int j)
 {
-	bool found=false;
 	bool inbounds=true;
  	int coord[4];
-	
 	int cumsz=1;
-	for(int i=0;i<4;i++)
-	{
-		coord[i] = (int)(((int)(q/cumsz))%size[i]);
-		cumsz *= size[i];
-	}
-	if(fg_conn==6)
-	{
-		for(int i=0; i<3; i++)
-			coord[i] += offset10[j][coord[3]][i];
-		coord[3] = (int)(offset10[j][coord[3]][3]);
-	}
-	else
-	{
-		for(int i=0; i<3; i++)
-			coord[i] += offset12[j][coord[3]][i];
-		coord[3] = (int)(offset12[j][coord[3]][3]);
-	}
 	
-	for(int i=0;i<4;i++)
-		inbounds *= (coord[i]>=0 && coord[i]<size[i]);
+	for(int i=0; i<3; cumsz*=size[i], i++)
+		coord[i] = ((int)(q/cumsz))%size[i];
+	
+	for(int i=0; i<3; i++)
+		coord[i] += (fg_conn==6)?offset10[j][coord[3]][i]:offset12[j][coord[3]][i];
+	coord[3] = (fg_conn==6)?offset10[j][coord[3]][3]:offset12[j][coord[3]][3];
+
+	for(int i=0; i<3; i++)
+		inbounds *= coord[i]>=0 && coord[i]<size[i];
 	
 	if(inbounds)
-	{
-		*p = (int)(coord[0] + coord[1]*size[0] + coord[2]*size[0]*size[1] + coord[3]*size[0]*size[1]*size[2]);
-		found=true;
-	}
+		*p = coord[0] + coord[1]*size[0] + coord[2]*size[0]*size[1] + coord[3]*size[0]*size[1]*size[2];
 	
-	return found;
+	return inbounds;
 }
 
 int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 {
-	int num_elements=1, p, nct;
-	int num_sets;
+	int num_elements=1;
+	int next_label=1;
+	int comp_ct=0;
+	int p, nct, num_sets, i, q, killidx, found_comp;
 	int *L;
-	int killidx, next_label=1;
 	bool found;
 	ufType *uf;
-	int i,j,q;
 		
 	for(i=0;i<4;i++)
 		num_elements *= size[i];
@@ -423,7 +401,7 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 		if(BW[q])
 		{
 			found = false;
-			for(j=0; j<nct; j++)
+			for(i=0; i<nct; i++)
 			{
 				if(nbor(&p,q,size,fg_conn,j))
 				{
@@ -447,23 +425,19 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 				for(j = killidx+1; j<nct; j++)
 					if(nbor(&p,q,size,fg_conn,j))
 						if((L[p]!=0) && (L[p]!=L[q]))
-							uf_new_pair(uf, (int)(L[q]-1), (int)(L[p]-1));
+							uf_new_pair(uf, (L[q]-1), (L[p]-1));
 			}
 		}
 	}
 	num_sets = uf_renumber(uf, 1);
-		
-	int comp_ct=0;
+	
 	if(reduced_out && num_elements==81)
 	{
 		for(q=0; q<num_elements; q++)
-		{
 			if(BW[q] != 0)
-			{
-				L[q] = (int)uf_query_set(uf, (L[q]-1))+1;
-			}
-		}
-		int found_comp=0;
+				L[q] = uf_query_set(uf, (L[q]-1))+1;
+		
+		found_comp=0;
 		
 		for(q=0;q<num_elements;q++)
 		{
@@ -485,10 +459,6 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 	else if(!reduced_out)
 	{
 		comp_ct=num_sets;
-	}
-	else
-	{
-		mexErrMsgTxt("Can only filter output on a 3x3x3x3 patch.");
 	}
 	
 	free(L);
