@@ -7,7 +7,7 @@ int NCCNh1(bool *graphPatch, unsigned int v)
 	int i;
 	for(i=0;i<81;i++)
 		graphPatch[i] &= mask10e[v-1][i];
-	
+
 	int num_comps = num_comps_edge(graphPatch,patchsize,6,v,true);
 	return num_comps;
 }

@@ -51,7 +51,7 @@ unsigned int unique_neighbor(unsigned int *source, int i, int xsize, int ysize, 
 	}
 	else
 	{
-		for(j=0;j<12;j++)
+		for(j=0;j<32;j++)
 		{
 			it = i%(xsize*ysize*zsize) + offset12[j][v][0] + offset12[j][v][1]*xsize + offset12[j][v][2]*xsize*ysize + offset12[j][v][3]*xsize*ysize*zsize;
 			if(source[it]!=0)
@@ -173,7 +173,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		}
 	}
 	delregct = j;
-	
 	
 	bool changed=true;
 	while( changed )

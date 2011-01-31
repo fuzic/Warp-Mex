@@ -107,19 +107,18 @@ bool nbor(int *p, int q, int *size, int fg_conn, int j)
  	int coord[4];
 	int cumsz=1;
 	
-	for(int i=0; i<3; cumsz*=size[i], i++)
+	for(int i=0; i<4; cumsz*=size[i], i++)
 		coord[i] = ((int)(q/cumsz))%size[i];
 	
 	for(int i=0; i<3; i++)
 		coord[i] += (fg_conn==6)?offset10[j][coord[3]][i]:offset12[j][coord[3]][i];
 	coord[3] = (fg_conn==6)?offset10[j][coord[3]][3]:offset12[j][coord[3]][3];
-
+	
 	for(int i=0; i<3; i++)
 		inbounds *= coord[i]>=0 && coord[i]<size[i];
 	
 	if(inbounds)
 		*p = coord[0] + coord[1]*size[0] + coord[2]*size[0]*size[1] + coord[3]*size[0]*size[1]*size[2];
-	
 	return inbounds;
 }
 
@@ -138,7 +137,7 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 		
 	L = (int *)calloc(num_elements,sizeof(int));
 	
-	nct = (fg_conn==6)?10:12;
+	nct = (fg_conn==6)?10:32;
 	
 	uf = uf_init(1000);
 		
@@ -149,13 +148,13 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 			found = false;
 			for(i=0; i<nct; i++)
 			{
-				if(nbor(&p,q,size,fg_conn,j))
+				if(nbor(&p,q,size,fg_conn,i))
 				{
 					if(L[p]!=0)
 					{
 						L[q] = L[p];
 						found = true;
-						killidx = j;
+						killidx = i;
 						break;
 					}
 				}
@@ -168,8 +167,8 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 			}
 			else
 			{
-				for(j = killidx+1; j<nct; j++)
-					if(nbor(&p,q,size,fg_conn,j))
+				for(i = killidx+1; i<nct; i++)
+					if(nbor(&p,q,size,fg_conn,i))
 						if((L[p]!=0) && (L[p]!=L[q]))
 							uf_new_pair(uf, (L[q]-1), (L[p]-1));
 			}
@@ -206,7 +205,6 @@ int num_comps_edge(bool *BW, int *size, int fg_conn, int dir, bool reduced_out)
 	{
 		comp_ct=num_sets;
 	}
-	
 	free(L);
 	uf_destroy(uf);
 	free(uf);
