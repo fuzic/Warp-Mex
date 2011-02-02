@@ -9,16 +9,6 @@ struct imorder
 	float val;
 };
 
-inline int pad_ind(int *size, int i)
-{
-	return ( 
-	((int)(i/(size[0]*size[1]*size[2])))*((size[0]+2)*(size[1]+2)*(size[2]+2)) + 
-	(i%size[0]+1) + 
-	((int)(i/size[0])%size[1]+1)*(size[0]+2) +
-	((int)(i/(size[1]*size[0]))%size[2]+1)*((size[2]+2)*(size[1]+2))
-	 );
-}
-
 int queue_comp(const void *queue1_, const void *queue2_)
 {
 	struct imorder *queue1 = (struct imorder *)queue1_;
@@ -61,7 +51,7 @@ unsigned int unique_neighbor(unsigned int *source, int i, int xsize, int ysize, 
 	}
 	else
 	{
-		for(j=0;j<12;j++)
+		for(j=0;j<32;j++)
 		{
 			it = i%(xsize*ysize*zsize) + offset12[j][v][0] + offset12[j][v][1]*xsize + offset12[j][v][2]*xsize*ysize + offset12[j][v][3]*xsize*ysize*zsize;
 			if(source[it]!=0)
@@ -76,8 +66,8 @@ unsigned int unique_neighbor(unsigned int *source, int i, int xsize, int ysize, 
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-	int i, j, k, it, x, y, z, d, linind, linind_pad, imsize, imsize_pad, erroro, errorn, delregct, delregbct;
-	int *size;
+	int i, j, k, it, x, y, z, d, linind, linind_pad, imsize, imsize_pad, delregct, delregbct, mask_dim_ct, max_obj_id,;
+	int *size, *mask_dims;
 	float binary_threshold;
 	unsigned int fg_conn, bg_conn, v;
 	bool *mask, *target, *missclass_points_image, *patch, *queued;
@@ -100,6 +90,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	orig_source = (unsigned int *)mxGetData(prhs[0]);
 	orig_target = (float *)mxGetData(prhs[1]);
 	mask = (bool *)mxGetData(prhs[2]);
+	
+	mask_dims = (int *)mxGetDimensions(prhs[2]);
+	mask_dim_ct = (int)mxGetNumberOfDimensions(prhs[2]);
 		
 	source = (unsigned int *)mxCalloc(imsize_pad,sizeof(unsigned int));
 	target_real = (float *)mxCalloc(imsize_pad,sizeof(float));
@@ -128,96 +121,148 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		}
 	}
 		
-	erroro = -1;
-	errorn = 0;
-	
 	bool bg,found;
 	int i_pad;
-	
-	j=0;
-	for(i=0;i<imsize;i++)
+	bool object_wise_warp=false;
+	int obj_id;
+	if(mask_dim_ct==5)
 	{
-		i_pad = pad_ind(size,i);
-		missclass_points_image[i_pad] = (bool)(mask[i] && ((source[i_pad]!=0)!=target[i_pad]));
-		
-		if(missclass_points_image[i_pad])
+		// We should really check the maximum value of the segmented components now to see how many objects we need to allocate
+		max_obj_id=0;
+		for(i=0;i<linind;i++)
 		{
-			v = (unsigned int)(i/((size[0]+2)*(size[1]+2)*(size[2]+2)));
-			errorn++;
-			it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10e[0][v][0] + offset10e[0][v][1]*(size[0]+2) + offset10e[0][v][2]*(size[0]+2)*(size[1]+2) + offset10e[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-			bg = (source[it] == 0);
-			found = false;
-			if((bg && fg_conn==6) || (!bg && fg_conn==26))
+			if(orig_source[i] > max_obj_id)
+				max_obj_id = (int)orig_source[i];
+		}
+		if(mxGetDimensions(prhs[2])[4]<max_obj_id)
+			mexErrMsgTxt("You must provide more masks than the highest labeled object in the image.");
+		object_wise_warp=true;
+	}
+	
+	int max_obj_ct = object_wise_warp?max_obj_id:1;
+	
+	for(obj_id=0;obj_id<max_obj_ct;obj_id++)
+	{
+		j=0;
+		for(i=0;i<imsize;i++)// We can redo this so the mask neighborhood doesn't need to be padded
+		{
+			d=(int)(i/(size[0]*size[1]*size[2]));
+			x=i%size[0]+1;
+			y=(int)(i/size[0])%size[1]+1;
+			z=(int)(i/(size[0]*size[1]))%size[2]+1;
+			i_pad = x + y*(size[0]+2) + z*(size[0]+2)*(size[1]+2) + d*(size[0]+2)*(size[1]+2)*(size[2]+2);
+			missclass_points_image[i_pad] = (bool)(mask[i+obj_id*imsize] && ((source[i_pad]!=0)!=target[i_pad]));
+			
+			if(object_wise_warp)
+				missclass_points_image[i_pad] &= (source[i_pad]==i+1) || (source[i_pad]==0);
+			
+			if(missclass_points_image[i_pad])
 			{
-				for(k=1;k<10;k++)
+				v = (unsigned int)(i_pad/((size[0]+2)*(size[1]+2)*(size[2]+2)));
+				it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10e[0][v][0] + offset10e[0][v][1]*(size[0]+2) + offset10e[0][v][2]*(size[0]+2)*(size[1]+2) + offset10e[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+				bg = (source[it] == 0);
+				found = false;
+				if((bg && fg_conn==6) || (!bg && fg_conn==26))
 				{
-					it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10[k][v][0] + offset10[k][v][1]*(size[0]+2) + offset10[k][v][2]*(size[0]+2)*(size[1]+2) + offset10[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-					if((bg && source[it]!=0) || (!bg && source[it]==0))
+					for(k=1;k<10;k++)
 					{
-						found=true;
-						break;
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10[k][v][0] + offset10[k][v][1]*(size[0]+2) + offset10[k][v][2]*(size[0]+2)*(size[1]+2) + offset10[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if(object_wise_warp)
+						{
+							if((bg && source[it]==(obj_id+1)) || (!bg && source[it]==0))
+							{
+								found=true;
+								break;
+							}
+						}
+						else if((bg && source[it]==(obj_id+1)) || (!bg && source[it]==0))
+						{
+							found=true;
+							break;
+						}
 					}
 				}
-			}
-			else
-			{
-				for(k=1;k<12;k++)
+				else
 				{
-					it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12[k][v][0] + offset12[k][v][1]*(size[0]+2) + offset12[k][v][2]*(size[0]+2)*(size[1]+2) + offset12[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-					if((bg && source[it]!=0) || (!bg && source[it]==0))
+					for(k=1;k<32;k++)
 					{
-						found=true;
-						break;
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12[k][v][0] + offset12[k][v][1]*(size[0]+2) + offset12[k][v][2]*(size[0]+2)*(size[1]+2) + offset12[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if(object_wise_warp)
+						{
+							if((bg && source[it]!=0) || (!bg && source[it]==0))
+							{
+								found=true;
+								break;
+							}
+						}
+						else if((bg && source[it]!=0) || (!bg && source[it]==0))
+						{
+							found=true;
+							break;
+						}
 					}
 				}
-			}
-			if(found)
-			{
-				delreg[j].coord = i_pad;
-				delreg[j].val = (float)fabs(target_real[i_pad]-binary_threshold);
-				j++;
+				// We are still only considering i_pad, which we are already sure belongs to the object of interest.
+				if(found)
+				{
+					delreg[j].coord = i_pad;
+					delreg[j].val = (float)fabs(target_real[i_pad]-binary_threshold);
+					j++;
+				}
 			}
 		}
-	}
-	delregct = j;
+		delregct = j;
 	
 	
-	bool changed=true;
-	while( changed )
-	{
-		changed=false;
-		qsort(delreg,delregct,sizeof(struct imorder),queue_comp);
-		for(i=0;i<delregct;i++)
-			delregb[i] = delreg[i];
-		
-		for(i=0;i<imsize_pad;i++)
-			queued[i] = false;
-		
-		delregbct = delregct;
-		delregct = 0;
-		for(k=0;k<delregbct;k++)
+		bool changed=true;
+		while( changed )
 		{
-			i = delregb[k].coord;
-			if(missclass_points_image[i])
+			changed=false;
+			qsort(delreg,delregct,sizeof(struct imorder),queue_comp);
+			for(i=0;i<delregct;i++)
+				delregb[i] = delreg[i];
+		
+			for(i=0;i<imsize_pad;i++)
+				queued[i] = false;
+		
+			delregbct = delregct;
+			delregct = 0;
+			for(k=0;k<delregbct;k++)
 			{
-				construct_patch(source,patch,i,size[0]+2,size[1]+2,size[2]+2);
-				if(simpleEdge3d(patch,(unsigned int)(i/((size[0]+2)*(size[1]+2)*(size[2]+2)) +1),fg_conn))
+				i = delregb[k].coord;
+				if(missclass_points_image[i])
 				{
-					source[i] = source[i]==0?unique_neighbor(source,i,size[0]+2,size[1]+2,size[2]+2,fg_conn):0;
-					
-					missclass_points_image[i] = false;
-					errorn--;
-					changed = true;
-					v = (unsigned int)(i/((size[0]+2)*(size[1]+2)*(size[2]+2)));
-					for(j=0;j<34;j++)
+					construct_patch(source,patch,i,size[0]+2,size[1]+2,size[2]+2);
+					if(simpleEdge3d(patch,(unsigned int)(i/((size[0]+2)*(size[1]+2)*(size[2]+2)) +1),fg_conn))
 					{
-						it = i%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12e[j][v][0] + offset12e[j][v][1]*(size[0]+2) + offset12e[j][v][2]*(size[0]+2)*(size[1]+2) + offset12e[j][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-						if(!queued[it])
+						source[i] = source[i]==0?unique_neighbor(source,i,size[0]+2,size[1]+2,size[2]+2,fg_conn):0;
+					
+						missclass_points_image[i] = false;
+						changed = true;
+						v = (unsigned int)(i/((size[0]+2)*(size[1]+2)*(size[2]+2)));
+						for(j=0;j<34;j++) /* all potential neighbors */
 						{
-							queued[it] = true;
-							delreg[delregct].coord = it;
-							delreg[delregct].val = (float)fabs(target_real[it]-binary_threshold);
-							delregct++;
+							it = i%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12e[j][v][0] + offset12e[j][v][1]*(size[0]+2) + offset12e[j][v][2]*(size[0]+2)*(size[1]+2) + offset12e[j][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+							if(!queued[it])
+							{
+								if(object_wise_warp)
+								{
+									if(source[it]==(obj_id+1) || source[it]==0)
+									{
+										queued[it] = true;
+										delreg[delregct].coord = it;
+										delreg[delregct].val = (float)fabs(target_real[it]-binary_threshold);
+										delregct++;
+									}
+								}
+								else
+								{
+									queued[it] = true;
+									delreg[delregct].coord = it;
+									delreg[delregct].val = (float)fabs(target_real[it]-binary_threshold);
+									delregct++;
+								}
+							}
 						}
 					}
 				}

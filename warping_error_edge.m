@@ -23,7 +23,7 @@ end
 %fprintf('Stage 1\n');
 warped_labels=simple_edge_warp_3d_mex(uint32(label), single(proposal), logical(mask~=0), single(binary_threshold),uint32(fg_conn));
 %fprintf('Stage 2\n');
-error_mask=((proposal>binary_threshold)~=(warped_labels~=0)).*mask;
+error_mask=((proposal>binary_threshold)~=(warped_labels~=0)).*max(mask,[],5);
 %fprintf('Stage 3\n');
 nonsimple_classify=non_simple_3d_edge_classify_mex_parallel(uint32(warped_labels), logical(error_mask~=0), uint32(radius), uint32(fg_conn));
 %fprintf('Stage 4\n');
