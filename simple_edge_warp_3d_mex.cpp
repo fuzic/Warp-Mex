@@ -121,7 +121,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		}
 	}
 		
-	bool bg,found;
+	bool found_fg,found_bg;
 	int i_pad;
 	bool object_wise_warp=false;
 	int obj_id;
@@ -140,6 +140,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	}
 	
 	int max_obj_ct = object_wise_warp?max_obj_id:1;
+	bool cur_edge_bg;
 	
 	for(obj_id=0;obj_id<max_obj_ct;obj_id++)
 	{
@@ -159,51 +160,55 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 			if(missclass_points_image[i_pad])
 			{
 				v = (unsigned int)(i_pad/((size[0]+2)*(size[1]+2)*(size[2]+2)));
-				it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10e[0][v][0] + offset10e[0][v][1]*(size[0]+2) + offset10e[0][v][2]*(size[0]+2)*(size[1]+2) + offset10e[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-				bg = (source[it] == 0);
-				found = false;
-				if((bg && fg_conn==6) || (!bg && fg_conn==26))
+				// First check for fg pixel, then check for bg pixel
+				found_bg=false;
+				found_fg=false;
+				
+				if(fg_conn==6)
 				{
-					for(k=1;k<10;k++)
+					for(k=0;k<10;k++)
 					{
-						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10[k][v][0] + offset10[k][v][1]*(size[0]+2) + offset10[k][v][2]*(size[0]+2)*(size[1]+2) + offset10[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-						if(object_wise_warp)
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10[0][v][0] + offset10[0][v][1]*(size[0]+2) + offset10[0][v][2]*(size[0]+2)*(size[1]+2) + offset10[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if((object_wise_warp && source[it]==(obj_id+1)) || (!object_wise_warp && source[it]!=0))
 						{
-							if((bg && source[it]==(obj_id+1)) || (!bg && source[it]==0))
-							{
-								found=true;
-								break;
-							}
+							found_fg=true;
+							break;
 						}
-						else if((bg && source[it]==(obj_id+1)) || (!bg && source[it]==0))
+					}
+					for(k=0;k<32;k++)
+					{
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12[0][v][0] + offset12[0][v][1]*(size[0]+2) + offset12[0][v][2]*(size[0]+2)*(size[1]+2) + offset12[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if(source[it]==0)
 						{
-							found=true;
+							found_bg=true;
 							break;
 						}
 					}
 				}
 				else
 				{
-					for(k=1;k<32;k++)
+					for(k=0;k<32;k++)
 					{
-						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12[k][v][0] + offset12[k][v][1]*(size[0]+2) + offset12[k][v][2]*(size[0]+2)*(size[1]+2) + offset12[k][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
-						if(object_wise_warp)
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset12[0][v][0] + offset12[0][v][1]*(size[0]+2) + offset12[0][v][2]*(size[0]+2)*(size[1]+2) + offset12[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if((object_wise_warp && source[it]==(obj_id+1)) || (!object_wise_warp && source[it]!=0))
 						{
-							if((bg && source[it]!=0) || (!bg && source[it]==0))
-							{
-								found=true;
-								break;
-							}
+							found_fg=true;
+							break;
 						}
-						else if((bg && source[it]!=0) || (!bg && source[it]==0))
+					}
+					for(k=0;k<10;k++)
+					{
+						it = i_pad%((size[0]+2)*(size[1]+2)*(size[2]+2)) + offset10[0][v][0] + offset10[0][v][1]*(size[0]+2) + offset10[0][v][2]*(size[0]+2)*(size[1]+2) + offset10[0][v][3]*(size[0]+2)*(size[1]+2)*(size[2]+2);
+						if(source[it]==0)
 						{
-							found=true;
+							found_bg=true;
 							break;
 						}
 					}
 				}
+				
 				// We are still only considering i_pad, which we are already sure belongs to the object of interest.
-				if(found)
+				if(found_fg && found_bg)
 				{
 					delreg[j].coord = i_pad;
 					delreg[j].val = (float)fabs(target_real[i_pad]-binary_threshold);
@@ -249,6 +254,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 								{
 									if(source[it]==(obj_id+1) || source[it]==0)
 									{
+										// For each edge we add, check whether it satisfies same criteria as initial queue?
+										
 										queued[it] = true;
 										delreg[delregct].coord = it;
 										delreg[delregct].val = (float)fabs(target_real[it]-binary_threshold);
